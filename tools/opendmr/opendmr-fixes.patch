@@ -1,0 +1,125 @@
+diff --git a/encoder/cgolay24128.cpp b/encoder/cgolay24128.cpp
+index f4f8946..972f3d9 100755
+--- a/encoder/cgolay24128.cpp
++++ b/encoder/cgolay24128.cpp
+@@ -1071,7 +1071,7 @@ static unsigned int get_syndrome_23127(unsigned int pattern)
+ 
+ unsigned int CGolay24128::encode23127(unsigned int data)
+ {
+-    return ENCODING_TABLE_23127[data];
++    return ENCODING_TABLE_24128[data] >> 1;
+ }
+ 
+ unsigned int CGolay24128::encode24128(unsigned int data)
+diff --git a/encoder/mbeenc.cpp b/encoder/mbeenc.cpp
+index 55ea2ea..37d8d93 100755
+--- a/encoder/mbeenc.cpp
++++ b/encoder/mbeenc.cpp
+@@ -530,7 +530,7 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms *cur_mp
+  * MBEEncoder implementation
+  */
+ MBEEncoder::MBEEncoder()
+-	: d_gain_adjust(1.0f)
++	: d_gain_adjust(0.0f)
+ {
+ 	mbe_parms enh_mp;
+ 	mbe_initMbeParms(&cur_mp, &prev_mp, &enh_mp);
+diff --git a/opendmr.cpp b/opendmr.cpp
+index 9170efe..2ddb9a8 100644
+--- a/opendmr.cpp
++++ b/opendmr.cpp
+@@ -215,7 +215,7 @@ opendmr_encoder_t *opendmr_encoder_create(void)
+             return nullptr;
+         }
+         enc->enc->set_dmr_mode();   /* AMBE+2 mode */
+-        enc->enc->set_gain_adjust(1.0f);
++        enc->enc->set_gain_adjust(0.0f);
+         enc->gain_db = 0;
+     }
+     return enc;
+@@ -240,7 +240,7 @@ void opendmr_encoder_reset(opendmr_encoder_t *enc)
+             return;
+         }
+         enc->enc->set_dmr_mode();
+-        enc->enc->set_gain_adjust(powf(10.0f, enc->gain_db / 20.0f));
++        enc->enc->set_gain_adjust(enc->gain_db * 0.16609640474f);
+     }
+ }
+ 
+@@ -251,7 +251,7 @@ void opendmr_encoder_set_gain(opendmr_encoder_t *enc, int gain_db)
+         if (gain_db < -20) gain_db = -20;
+         if (gain_db > 20) gain_db = 20;
+         enc->gain_db = gain_db;
+-        enc->enc->set_gain_adjust(powf(10.0f, gain_db / 20.0f));
++        enc->enc->set_gain_adjust(gain_db * 0.16609640474f);
+     }
+ }
+ 
+@@ -263,16 +263,58 @@ void opendmr_encoder_set_gain(opendmr_encoder_t *enc, int gain_db)
+  */
+ static void encode_ambe_frame(const int b[9], uint8_t *frame72)
+ {
+-    /* Pack b[9] into 49 bits */
+-    static const int b_lengths[9] = {7, 5, 5, 9, 7, 5, 4, 4, 3};
++    /* Pack b[9] into the 49-bit AMBE+2 parameter layout expected by the
++     * decoder (mbe_decodeAmbe2450Parms), not as contiguous fields. */
+     uint8_t bits49[49];
+-    int pos = 0;
+-    for (int i = 0; i < 9; i++) {
+-        int val = b[i];
+-        for (int j = b_lengths[i] - 1; j >= 0; j--) {
+-            bits49[pos++] = (val >> j) & 1;
+-        }
+-    }
++    bits49[0]  = (b[0] >> 6) & 1;
++    bits49[1]  = (b[0] >> 5) & 1;
++    bits49[2]  = (b[0] >> 4) & 1;
++    bits49[3]  = (b[0] >> 3) & 1;
++    bits49[4]  = (b[1] >> 4) & 1;
++    bits49[5]  = (b[1] >> 3) & 1;
++    bits49[6]  = (b[1] >> 2) & 1;
++    bits49[7]  = (b[1] >> 1) & 1;
++    bits49[8]  = (b[2] >> 4) & 1;
++    bits49[9]  = (b[2] >> 3) & 1;
++    bits49[10] = (b[2] >> 2) & 1;
++    bits49[11] = (b[2] >> 1) & 1;
++    bits49[12] = (b[3] >> 8) & 1;
++    bits49[13] = (b[3] >> 7) & 1;
++    bits49[14] = (b[3] >> 6) & 1;
++    bits49[15] = (b[3] >> 5) & 1;
++    bits49[16] = (b[3] >> 4) & 1;
++    bits49[17] = (b[3] >> 3) & 1;
++    bits49[18] = (b[3] >> 2) & 1;
++    bits49[19] = (b[3] >> 1) & 1;
++    bits49[20] = (b[4] >> 6) & 1;
++    bits49[21] = (b[4] >> 5) & 1;
++    bits49[22] = (b[4] >> 4) & 1;
++    bits49[23] = (b[4] >> 3) & 1;
++    bits49[24] = (b[5] >> 4) & 1;
++    bits49[25] = (b[5] >> 3) & 1;
++    bits49[26] = (b[5] >> 2) & 1;
++    bits49[27] = (b[5] >> 1) & 1;
++    bits49[28] = (b[6] >> 3) & 1;
++    bits49[29] = (b[6] >> 2) & 1;
++    bits49[30] = (b[6] >> 1) & 1;
++    bits49[31] = (b[7] >> 3) & 1;
++    bits49[32] = (b[7] >> 2) & 1;
++    bits49[33] = (b[7] >> 1) & 1;
++    bits49[34] = (b[8] >> 2) & 1;
++    bits49[35] = b[1] & 1;
++    bits49[36] = b[2] & 1;
++    bits49[37] = (b[0] >> 2) & 1;
++    bits49[38] = (b[0] >> 1) & 1;
++    bits49[39] = b[0] & 1;
++    bits49[40] = b[3] & 1;
++    bits49[41] = (b[4] >> 2) & 1;
++    bits49[42] = (b[4] >> 1) & 1;
++    bits49[43] = b[4] & 1;
++    bits49[44] = b[5] & 1;
++    bits49[45] = b[6] & 1;
++    bits49[46] = b[7] & 1;
++    bits49[47] = (b[8] >> 1) & 1;
++    bits49[48] = b[8] & 1;
+ 
+     /* Extract 12-bit values for FEC encoding */
+     /* C0 = bits49[0-11], C1 = bits49[12-23], C2 = bits49[24-34], C3 = bits49[35-48] */

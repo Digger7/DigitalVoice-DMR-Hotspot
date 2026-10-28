@@ -1,0 +1,80 @@
+# Copy to config.yaml and fill in your own station data.
+# Never commit a real BrandMeister hotspot password.
+
+station:
+  callsign: N0CALL
+  dmr_id: 0                 # your radioid.net DMR ID, e.g. 2501234
+
+modem:
+  port: ""                  # e.g. /dev/cu.usbmodemXXXX; empty = auto-detect
+  baud: 115200
+  duplex: false             # false for a simplex OpenGD77 hotspot
+  rx_invert: false
+  tx_invert: false
+  ptt_invert: false
+  tx_delay: 100
+  dmr_delay: 0
+  debug: false
+
+rf:
+  rx_frequency: 438800000   # Hz
+  tx_frequency: 438800000
+  rx_offset: 0
+  tx_offset: 0
+  rf_level: 20              # 1..100; radio steps: 1=100mW 5=250mW 10=500mW 15=750mW 20=1W 40=5W 80=25W 98=40W (max)
+  color_code: 1
+  tx_dc_offset: 0
+  rx_dc_offset: 0
+  tx_gain_db: 0             # AMBE+2 gain compensation, -20..20 dB (0 = neutral, negative = louder)
+
+network:
+  address: 2502.master.brandmeister.network
+  port: 62031
+  password: ""              # hotspot security password; keep it out of git
+  name: BM
+  location: false
+  slot1: false
+  slot2: true
+  static_tgs:
+    2:
+      - 9
+  hang: 30
+
+agent:
+  enabled: true
+  stt_engine: faster-whisper   # faster-whisper | none (python: .venv/bin/python, PATH or DMR_PYTHON)
+  whisper_model: small
+  whisper_language: ru
+  whisper_device: auto
+  llm_provider: custom        # custom | pollinations | openrouter | groq | gemini | mistral | cerebras | huggingface
+                              # Named providers use their built-in base URL; "custom" uses llm_base_url.
+  llm_base_url: http://localhost:1234
+  llm_model: ""               # empty = provider default (e.g. llama-3.3-70b-versatile for groq)
+  system_prompt: "Ты — голосовой радиолюбительский ассистент. Отвечай кратко, чётко, по-русски, одним-двумя короткими предложениями. Без списков, markdown и эмодзи."
+  llm_api_key: ""             # required for online providers except pollinations
+  llm_temperature: 0.4
+  llm_max_tokens: 1024
+  llm_timeout: 60.0
+  web_search: false           # let the model search the internet before answering
+  web_search_provider: duckduckgo  # duckduckgo | searxng
+  web_search_base_url: ""     # required for searxng, e.g. https://searx.example.org
+  web_search_language: ru     # search result language (defaults to whisper_language when empty)
+  web_search_max_results: 5   # 1..10
+  web_search_fetch_pages: 2   # read the text of the top N pages (0 = snippets only)
+  web_search_timeout: 12.0    # per-request HTTP timeout, seconds
+  tts_engine: piper           # piper | none (binary: .venv/bin/piper, PATH or DMR_PIPER)
+  piper_voice: ru_RU-irina-medium  # ru_RU: irina | denis | dmitri | ruslan (medium).
+                                    # Any *.onnx + *.onnx.json works; high/low models are listed too.
+  piper_voice_dir: ""         # empty = voices/piper next to cwd or the binary (scanned recursively)
+  piper_model_path: ""
+  tts_volume: 1.0
+  tts_rate: 1.0                # speech speed multiplier: 1.0 = normal, 0.5..2.0
+  tts_length_scale: 1.12       # base piper length_scale (>1.0 = slower)
+  reply_src_id: 0             # 0 = reuse caller
+  reply_dst_id: 0             # 0 = reuse caller
+  reply_flco: 0               # 0 = group call, 3 = private call
+  hold_timeout: 1.5
+  max_queue: 300
+
+mode: network               # network | echo | agent
+log_level: INFO

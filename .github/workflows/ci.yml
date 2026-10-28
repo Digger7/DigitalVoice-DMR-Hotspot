@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS: full build with the cgo vocoder (libopendmr.dylib is tracked in git)
+          - os: macos-14
+            cgo: 1
+          # Linux/Windows: CGO_ENABLED=0, codec falls back to the stub
+          - os: ubuntu-24.04
+            cgo: 0
+          - os: windows-2022
+            cgo: 0
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      CGO_ENABLED: ${{ matrix.cgo }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - run: go vet ./...
+
+      - run: go test ./...
+
+  # The windows release artifact is built the same way; catch build breaks early.
+  build-windows:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    env:
+      CGO_ENABLED: 0
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - run: go build -ldflags "-s -w" -o bin/ ./cmd/dmr-gui ./cmd/dmr-hotspot ./cmd/dmr-diag ./cmd/dmr-selftest

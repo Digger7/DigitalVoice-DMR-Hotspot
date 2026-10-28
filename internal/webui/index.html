@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DigitalVoice - DMR Hotspot</title>
+<link rel="icon" type="image/png" href="/icon.png">
+<style>
+:root{--bg:#11151b;--panel:#171d26;--line:#2a3442;--text:#d9e2ef;--muted:#8493a8;--accent:#43a047;--accent2:#2d6cdf;--err:#d9534f;--warn:#d9a441}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:10px 20px;background:#0d1117;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand img{width:30px;height:30px;border-radius:8px;flex:none;border:1px solid #2a3442;display:block}
+.titles{display:flex;flex-direction:column;gap:2px;min-width:0}
+h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.2px;line-height:1.2;white-space:nowrap}
+.subtitle{color:var(--muted);font-size:10.5px;letter-spacing:.3px;line-height:1.2;white-space:nowrap}
+#pill{display:inline-flex;align-items:center;gap:7px;height:24px;padding:0 12px;border-radius:99px;background:#2a3442;color:var(--text);font-size:11px;font-weight:700;letter-spacing:.6px;white-space:nowrap}
+#pill::before{content:"";width:7px;height:7px;border-radius:99px;background:#8493a8;flex:none}
+#pill.running{background:#173f1f;color:#9ee6a4}
+#pill.running::before{background:#43a047;box-shadow:0 0 6px rgba(67,160,71,.7)}
+#pill.error{background:#56201f;color:#ffb4b2}
+#pill.error::before{background:#d9534f;box-shadow:0 0 6px rgba(217,83,79,.7)}
+#pill.starting{background:#4b3b12;color:#ffd58a}
+#pill.starting::before{background:#d9a441;box-shadow:0 0 6px rgba(217,164,65,.7)}
+.spacer{flex:1}
+#modebadge{display:none;align-items:center;height:26px;padding:0 12px;border:1px solid var(--line);border-radius:99px;color:var(--muted);font-size:11px;white-space:nowrap}
+#modebadge:not(:empty){display:inline-flex}
+button{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 15px;background:#222c3a;color:var(--text);border:1px solid #38475b;border-radius:7px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}
+button:hover{background:#2a3748}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.danger{background:#7a2b29;border-color:#7a2b29;color:#fff}
+button.blue{background:var(--accent2);border-color:var(--accent2);color:#fff}
+.lang{display:flex;flex-direction:row;align-items:center;gap:7px;color:var(--muted);font-size:11px;white-space:nowrap}
+.lang select{height:32px;padding:0 10px}
+@media(max-width:760px){.subtitle{display:none}header{padding:10px 14px;gap:8px 12px}}
+main{display:grid;grid-template-columns:minmax(420px,1fr) minmax(360px,.9fr);gap:16px;padding:16px;max-width:1500px;margin:0 auto}
+@media(max-width:980px){main{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:0 0 10px}
+details{border-top:1px solid var(--line);padding:10px 0}
+details:first-of-type{border-top:0}
+summary{cursor:pointer;font-weight:600;font-size:13px;padding:2px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 12px;margin-top:10px}
+label{display:flex;flex-direction:column;gap:3px;color:var(--muted);font-size:11px}
+label.wide{grid-column:1/-1}
+input,select{background:#0e131a;color:var(--text);border:1px solid #334153;border-radius:6px;padding:6px 8px;font:inherit;min-width:0}
+input[type=checkbox]{width:16px;height:16px;align-self:flex-start}
+.check{flex-direction:row;align-items:center;gap:7px;color:var(--text);font-size:12px}
+.row{display:flex;gap:8px;align-items:center}
+.row input{flex:1}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.metric{background:#0e131a;border:1px solid #263141;border-radius:8px;padding:8px 10px}
+.metric b{display:block;font-size:11px;color:var(--muted);font-weight:500}
+.metric span{font-size:15px;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:left;padding:5px 6px;border-bottom:1px solid #232d3a;white-space:nowrap}
+th{color:var(--muted);font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+#log{height:320px;overflow:auto;background:#080b0f;border:1px solid #202a37;border-radius:8px;padding:8px;font:11px/1.5 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap}
+.l-debug{color:#66758a}.l-info{color:#a9b8cc}.l-warning{color:#e0b25d}.l-error{color:#ff8c88}
+.toast{position:fixed;right:18px;bottom:18px;background:#1f2937;border:1px solid #3a4a60;border-radius:8px;padding:10px 14px;opacity:0;transform:translateY(8px);transition:.2s;max-width:420px}
+.toast.show{opacity:1;transform:none}
+.toast.err{border-color:#7a2b29;background:#2b1718}
+.hint{color:var(--muted);font-size:11px;margin-top:6px}
+.hint.wide{grid-column:1/-1}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <img src="/icon.png" alt="DigitalVoice - DMR Hotspot">
+    <div class="titles">
+      <h1>DigitalVoice - DMR Hotspot</h1>
+      <span class="subtitle">OpenGD77 / BrandMeister</span>
+    </div>
+  </div>
+  <span id="pill">STOPPED</span>
+  <span id="modebadge"></span>
+  <span class="spacer"></span>
+  <label class="lang"><span data-i18n="lang_label">Language</span>
+    <select id="lang" onchange="setLang(this.value)">
+      <option value="en">English</option>
+      <option value="ru">Русский</option>
+    </select>
+  </label>
+  <button class="primary" data-i18n="btn_start" onclick="startCore()">Start</button>
+  <button class="danger" data-i18n="btn_stop" onclick="stopCore()">Stop</button>
+  <button data-i18n="btn_restart" onclick="restartCore()">Restart</button>
+</header>
+<main>
+  <section class="panel">
+    <h2 data-i18n="sec_settings">Settings</h2>
+    <details open><summary data-i18n="sec_mode">Mode</summary>
+      <div class="grid">
+        <label class="wide"><span data-i18n="lbl_mode">Operating mode</span><select id="mode">
+          <option value="network" data-i18n="opt_mode_network">BrandMeister (internet)</option>
+          <option value="echo" data-i18n="opt_mode_echo">Echo repeater (offline)</option>
+          <option value="agent" data-i18n="opt_mode_agent">Voice assistant (local / online LLM)</option>
+        </select></label>
+        <label class="wide"><span data-i18n="lbl_log_level">Log level</span><select id="log_level">
+          <option>DEBUG</option><option>INFO</option><option>WARNING</option><option>ERROR</option>
+        </select></label>
+      </div>
+      <p class="hint" data-i18n="hint_mode">Echo = re-transmit received DMR on RF, no network. Agent = STT → LLM → TTS reply.</p>
+    </details>
+    <details open><summary data-i18n="sec_radio">Radio / Modem</summary>
+      <div class="grid">
+        <label class="wide"><span data-i18n="lbl_serial">Serial port</span><div class="row"><select id="modem_port"></select><button type="button" data-i18n="btn_refresh" onclick="loadPorts()">Refresh</button></div></label>
+        <label><span data-i18n="lbl_baud">Baud rate</span><input id="modem_baud" type="number" step="1"></label>
+        <label><span data-i18n="lbl_tx_delay">TX delay (ms)</span><input id="modem_tx_delay" type="number"></label>
+        <label><span data-i18n="lbl_dmr_delay">DMR delay</span><input id="modem_dmr_delay" type="number"></label>
+        <label class="check"><input id="modem_duplex" type="checkbox"><span data-i18n="chk_duplex">Duplex repeater</span></label>
+        <label class="check"><input id="modem_rx_invert" type="checkbox"><span data-i18n="chk_rx_invert">RX invert</span></label>
+        <label class="check"><input id="modem_tx_invert" type="checkbox"><span data-i18n="chk_tx_invert">TX invert</span></label>
+        <label class="check"><input id="modem_ptt_invert" type="checkbox"><span data-i18n="chk_ptt_invert">PTT invert</span></label>
+        <label class="check"><input id="modem_debug" type="checkbox"><span data-i18n="chk_modem_debug">Modem debug log</span></label>
+      </div>
+    </details>
+    <details open><summary data-i18n="sec_station">BrandMeister / Station</summary>
+      <div class="grid">
+        <label><span data-i18n="lbl_callsign">Callsign</span><input id="station_callsign"></label>
+        <label><span data-i18n="lbl_dmr_id">DMR ID</span><input id="station_dmr_id" type="number"></label>
+        <label class="wide"><span data-i18n="lbl_master_addr">Master address</span><input id="network_address"></label>
+        <label><span data-i18n="lbl_master_port">Master port</span><input id="network_port" type="number"></label>
+        <label><span data-i18n="lbl_hotspot_name">Hotspot name</span><input id="network_name"></label>
+        <label class="wide"><span data-i18n="lbl_password">Security password</span><input id="network_password" type="password" placeholder="(unchanged)"></label>
+        <label><span data-i18n="lbl_hang">Hang time (frames)</span><input id="network_hang" type="number"></label>
+        <label class="check"><input id="network_slot2" type="checkbox"><span data-i18n="chk_slot2">Slot 2</span></label>
+        <label class="check"><input id="network_slot1" type="checkbox"><span data-i18n="chk_slot1">Slot 1</span></label>
+        <label class="check"><input id="network_location" type="checkbox"><span data-i18n="chk_location">Send location</span></label>
+      </div>
+    </details>
+    <details open><summary data-i18n="sec_rf">RF</summary>
+      <div class="grid">
+        <label><span data-i18n="lbl_rx_freq">RX frequency (MHz)</span><input id="rf_rx_mhz" type="number" step="0.000001"></label>
+        <label><span data-i18n="lbl_tx_freq">TX frequency (MHz)</span><input id="rf_tx_mhz" type="number" step="0.000001"></label>
+        <label><span data-i18n="lbl_color_code">Color code</span><input id="rf_color_code" type="number" min="0" max="15"></label>
+        <label><span data-i18n="lbl_tx_power">TX power</span><select id="rf_rf_level">
+          <option value="1" data-i18n="pwr_min">Minimum</option><option value="5" data-i18n="pwr_very_low">Very low</option><option value="10" data-i18n="pwr_low">Low</option>
+          <option value="15" data-i18n="pwr_below_medium">Below medium</option><option value="20" data-i18n="pwr_medium">Medium</option><option value="40" data-i18n="pwr_above_medium">Above medium</option>
+          <option value="80" data-i18n="pwr_high">High</option><option value="98" data-i18n="pwr_max">Maximum</option></select></label>
+        <label><span data-i18n="lbl_rx_offset">RX offset</span><input id="rf_rx_offset" type="number"></label>
+        <label><span data-i18n="lbl_tx_offset">TX offset</span><input id="rf_tx_offset" type="number"></label>
+        <label><span data-i18n="lbl_tx_dc">TX DC offset</span><input id="rf_tx_dc_offset" type="number"></label>
+        <label><span data-i18n="lbl_rx_dc">RX DC offset</span><input id="rf_rx_dc_offset" type="number"></label>
+        <label><span data-i18n="lbl_tx_gain">TX gain compensation (dB)</span><input id="rf_tx_gain_db" type="number" min="-20" max="20"></label>
+      </div>
+    </details>
+    <details><summary data-i18n="sec_agent">Voice assistant (agent)</summary>
+      <div class="grid">
+        <label class="check wide"><input id="agent_enabled" type="checkbox"><span data-i18n="chk_agent_enabled">Process inbound calls and answer as voice</span></label>
+        <label><span data-i18n="lbl_stt">Speech-to-text</span><select id="agent_stt_engine"><option value="faster-whisper">faster-whisper</option><option value="none">none</option></select></label>
+        <label><span data-i18n="lbl_whisper_model">Whisper model</span><input id="agent_whisper_model" list="whisper_models"><datalist id="whisper_models"><option>tiny</option><option>base</option><option>small</option><option>medium</option><option>large-v3</option></datalist></label>
+        <label><span data-i18n="lbl_whisper_lang">Whisper language</span><input id="agent_whisper_language"></label>
+        <label><span data-i18n="lbl_whisper_device">Whisper device</span><input id="agent_whisper_device" list="whisper_devices"><datalist id="whisper_devices"><option>auto</option><option>cpu</option><option>cuda</option></datalist></label>
+        <label class="wide"><span data-i18n="lbl_llm_provider">LLM provider</span><select id="agent_llm_provider" onchange="onProviderChange()"></select></label>
+        <label class="wide"><span data-i18n="lbl_llm_url">LLM base URL</span><input id="agent_llm_base_url" placeholder="http://localhost:1234"></label>
+        <label><span data-i18n="lbl_llm_model">LLM model</span><input id="agent_llm_model" list="agent_llm_models" placeholder="(server default)" data-i18n-ph="ph_server_default"><datalist id="agent_llm_models"></datalist></label>
+        <label><span data-i18n="lbl_llm_key">LLM API key</span><input id="agent_llm_api_key" type="password" placeholder="(unchanged)"></label>
+        <p class="hint wide" id="llm_provider_hint"></p>
+        <label class="wide"><span data-i18n="lbl_system_prompt">System prompt</span><textarea id="agent_system_prompt" rows="3"></textarea></label>
+        <label><span data-i18n="lbl_temperature">Temperature</span><input id="agent_llm_temperature" type="number" step="0.1"></label>
+        <label><span data-i18n="lbl_max_tokens">Max tokens</span><input id="agent_llm_max_tokens" type="number"></label>
+        <label><span data-i18n="lbl_timeout">Timeout (s)</span><input id="agent_llm_timeout" type="number"></label>
+        <label class="check wide"><input id="agent_web_search" type="checkbox"><span data-i18n="chk_web_search">Allow the model to search the internet</span></label>
+        <label><span data-i18n="lbl_web_search_provider">Web search provider</span><select id="agent_web_search_provider"><option value="duckduckgo">DuckDuckGo</option><option value="searxng">SearXNG</option></select></label>
+        <label><span data-i18n="lbl_web_search_base_url">SearXNG base URL</span><input id="agent_web_search_base_url" placeholder="https://searx.example.org"></label>
+        <label><span data-i18n="lbl_web_search_language">Search language</span><input id="agent_web_search_language" placeholder="ru"></label>
+        <label><span data-i18n="lbl_web_search_max_results">Max search results</span><input id="agent_web_search_max_results" type="number" min="1" max="10"></label>
+        <label><span data-i18n="lbl_web_search_fetch_pages">Pages to read (0 = snippets only)</span><input id="agent_web_search_fetch_pages" type="number" min="0" max="5"></label>
+        <label><span data-i18n="lbl_web_search_timeout">Search timeout (s)</span><input id="agent_web_search_timeout" type="number" step="0.5"></label>
+        <p class="hint wide" data-i18n="hint_web_search">The model decides when to search. Results are untrusted data; the reply stays short and suitable for voice.</p>
+        <label><span data-i18n="lbl_tts">Speech synthesis</span><select id="agent_tts_engine"><option value="piper">piper</option><option value="none">none</option></select></label>
+        <label class="wide"><span data-i18n="lbl_piper_voice">Piper voice</span><div class="row"><select id="agent_piper_voice"><option value="">(default)</option></select><button type="button" data-i18n="btn_refresh" onclick="loadVoices()">Refresh</button><button type="button" data-i18n="btn_test_voice" onclick="testVoice()">Test voice</button></div></label>
+        <p class="hint wide" data-i18n="hint_voice">Voices are discovered recursively in the Piper voices dir. Drop any *.onnx + *.onnx.json there to add a voice; high-quality models are listed first.</p>
+        <label class="wide"><span data-i18n="lbl_piper_dir">Piper voices dir</span><input id="agent_piper_voice_dir" placeholder="voices/piper"></label>
+        <label class="wide"><span data-i18n="lbl_piper_model">Piper model (.onnx)</span><input id="agent_piper_model_path"></label>
+        <label><span data-i18n="lbl_reply_src">Reply source ID (0 = caller)</span><input id="agent_reply_src_id" type="number"></label>
+        <label><span data-i18n="lbl_reply_dst">Reply target ID (0 = caller)</span><input id="agent_reply_dst_id" type="number"></label>
+        <label><span data-i18n="lbl_reply_type">Reply call type</span><select id="agent_reply_flco"><option value="0" data-i18n="opt_group_call">Group call (TG)</option><option value="3" data-i18n="opt_private_call">Private call (PC)</option></select></label>
+        <label><span data-i18n="lbl_tail_hold">Tail hold (s)</span><input id="agent_hold_timeout" type="number" step="0.1"></label>
+        <label><span data-i18n="lbl_max_queue">Max queue (bursts)</span><input id="agent_max_queue" type="number"></label>
+        <label><span data-i18n="lbl_speech_rate">Speech rate (×, 1 = normal)</span><input id="agent_tts_rate" type="number" step="0.05" min="0.5" max="2"></label>
+        <label><span data-i18n="lbl_length_scale">TTS length scale (higher = slower)</span><input id="agent_tts_length_scale" type="number" step="0.01"></label>
+        <label><span data-i18n="lbl_tts_volume">TTS volume</span><input id="agent_tts_volume" type="number" step="0.01"></label>
+      </div>
+      <div class="actions"><button type="button" class="blue" data-i18n="btn_test_llm" onclick="testLLM()">Test LLM connection</button></div>
+    </details>
+    <div class="actions">
+      <button class="primary" data-i18n="btn_save" onclick="saveConfig()">Save config</button>
+      <button data-i18n="btn_reload" onclick="loadConfig()">Reload</button>
+    </div>
+    <p class="hint" id="cfgpath"></p>
+  </section>
+  <section class="panel">
+    <h2 data-i18n="sec_status">Status</h2>
+    <div class="metrics">
+      <div class="metric"><b data-i18n="m_modem">Modem</b><span id="m_modem">—</span></div>
+      <div class="metric"><b data-i18n="m_network">Network</b><span id="m_net">—</span></div>
+      <div class="metric"><b data-i18n="m_txrx">TX / RX</b><span id="m_tx">—</span></div>
+      <div class="metric"><b data-i18n="m_uptime">Uptime</b><span id="m_uptime">—</span></div>
+    </div>
+    <p class="hint" id="m_error"></p>
+    <div id="agentbox" style="display:none;margin-top:12px">
+      <h2 data-i18n="sec_agent_metric">Agent</h2>
+      <div class="metrics">
+        <div class="metric"><b data-i18n="m_state">State</b><span id="a_state">—</span></div>
+        <div class="metric"><b data-i18n="m_calls">Calls / replies</b><span id="a_calls">—</span></div>
+        <div class="metric"><b data-i18n="m_frames">RX / TX bursts</b><span id="a_frames">—</span></div>
+        <div class="metric"><b data-i18n="m_errors">Errors</b><span id="a_errors">—</span></div>
+      </div>
+    </div>
+    <div id="echobox" style="display:none;margin-top:12px">
+      <h2 data-i18n="sec_echo">Echo</h2>
+      <div class="metrics">
+        <div class="metric"><b data-i18n="m_frames">RX / TX bursts</b><span id="e_frames">—</span></div>
+        <div class="metric"><b data-i18n="m_queued">Queued</b><span id="e_queue">—</span></div>
+        <div class="metric"><b data-i18n="m_replaying">Replaying</b><span id="e_replay">—</span></div>
+        <div class="metric"><b data-i18n="m_last_call">Last call</b><span id="e_last">—</span></div>
+      </div>
+    </div>
+    <h2 style="margin-top:16px" data-i18n="sec_last_heard">Last heard</h2>
+    <table><thead><tr><th data-i18n="th_time">Time</th><th data-i18n="th_slot">Slot</th><th data-i18n="th_source">Source</th><th data-i18n="th_destination">Destination</th><th data-i18n="th_call">Call</th><th data-i18n="th_ber">BER</th></tr></thead><tbody id="heard"></tbody></table>
+    <h2 style="margin-top:16px" data-i18n="sec_log">Log</h2>
+    <div id="log"></div>
+  </section>
+</main>
+<div id="toast" class="toast"></div>
+<script>
+const I18N={
+en:{
+  lang_label:"Language",
+  btn_start:"Start",btn_stop:"Stop",btn_restart:"Restart",btn_refresh:"Refresh",btn_test_voice:"Test voice",btn_test_llm:"Test LLM connection",btn_save:"Save config",btn_reload:"Reload",
+  state_stopped:"STOPPED",state_running:"RUNNING",state_starting:"STARTING",state_error:"ERROR",mode_prefix:"mode: ",
+  sec_settings:"Settings",sec_radio:"Radio / Modem",sec_station:"BrandMeister / Station",sec_rf:"RF",sec_mode:"Mode",sec_agent:"Voice assistant (agent)",
+  lbl_serial:"Serial port",ph_auto:"auto-detect",lbl_baud:"Baud rate",lbl_tx_delay:"TX delay (ms)",lbl_dmr_delay:"DMR delay",
+  chk_duplex:"Duplex repeater",chk_rx_invert:"RX invert",chk_tx_invert:"TX invert",chk_ptt_invert:"PTT invert",chk_modem_debug:"Modem debug log",
+  lbl_callsign:"Callsign",lbl_dmr_id:"DMR ID",lbl_master_addr:"Master address",lbl_master_port:"Master port",lbl_hotspot_name:"Hotspot name",
+  lbl_password:"Security password",ph_unchanged:"(unchanged)",ph_not_set:"(not set)",lbl_hang:"Hang time (frames)",chk_slot2:"Slot 2",chk_slot1:"Slot 1",chk_location:"Send location",
+  lbl_rx_freq:"RX frequency (MHz)",lbl_tx_freq:"TX frequency (MHz)",lbl_color_code:"Color code",lbl_tx_power:"TX power",
+  lbl_rx_offset:"RX offset",lbl_tx_offset:"TX offset",lbl_tx_dc:"TX DC offset",lbl_rx_dc:"RX DC offset",lbl_tx_gain:"TX gain compensation (dB)",
+  pwr_min:"Minimum",pwr_very_low:"Very low",pwr_low:"Low",pwr_below_medium:"Below medium",pwr_medium:"Medium",pwr_above_medium:"Above medium",pwr_high:"High",pwr_max:"Maximum",
+  lbl_mode:"Operating mode",opt_mode_network:"BrandMeister (internet)",opt_mode_echo:"Echo repeater (offline)",opt_mode_agent:"Voice assistant (local / online LLM)",lbl_log_level:"Log level",
+  hint_mode:"Echo = re-transmit received DMR on RF, no network. Agent = STT → LLM → TTS reply.",
+  chk_agent_enabled:"Process inbound calls and answer as voice",lbl_stt:"Speech-to-text",lbl_whisper_model:"Whisper model",lbl_whisper_lang:"Whisper language",lbl_whisper_device:"Whisper device",
+  lbl_llm_provider:"LLM provider",lbl_llm_url:"LLM base URL",ph_server_default:"(server default)",lbl_llm_model:"LLM model",lbl_llm_key:"LLM API key",lbl_system_prompt:"System prompt",lbl_temperature:"Temperature",lbl_max_tokens:"Max tokens",lbl_timeout:"Timeout (s)",llm_key_required:"An API key is required.",
+  chk_web_search:"Allow the model to search the internet",lbl_web_search_provider:"Web search provider",lbl_web_search_base_url:"SearXNG base URL",lbl_web_search_language:"Search language",lbl_web_search_max_results:"Max search results",lbl_web_search_fetch_pages:"Pages to read (0 = snippets only)",lbl_web_search_timeout:"Search timeout (s)",hint_web_search:"The model decides when to search. Results are untrusted data; the reply stays short and suitable for voice.",
+  lbl_tts:"Speech synthesis",lbl_piper_voice:"Piper voice",opt_default:"(default)",lbl_piper_dir:"Piper voices dir",lbl_piper_model:"Piper model (.onnx)",
+  hint_voice:"Voices are discovered recursively in the Piper voices dir. Drop any *.onnx + *.onnx.json there to add a voice; high-quality models are listed first.",
+  lbl_reply_src:"Reply source ID (0 = caller)",lbl_reply_dst:"Reply target ID (0 = caller)",lbl_reply_type:"Reply call type",opt_group_call:"Group call (TG)",opt_private_call:"Private call (PC)",
+  lbl_tail_hold:"Tail hold (s)",lbl_max_queue:"Max queue (bursts)",lbl_speech_rate:"Speech rate (×, 1 = normal)",lbl_length_scale:"TTS length scale (higher = slower)",lbl_tts_volume:"TTS volume",
+  sec_status:"Status",m_modem:"Modem",m_network:"Network",m_txrx:"TX / RX",m_uptime:"Uptime",sec_agent_metric:"Agent",m_state:"State",m_calls:"Calls / replies",m_frames:"RX / TX bursts",m_errors:"Errors",
+  sec_echo:"Echo",m_queued:"Queued",m_replaying:"Replaying",m_last_call:"Last call",
+  sec_last_heard:"Last heard",th_time:"Time",th_slot:"Slot",th_source:"Source",th_destination:"Destination",th_call:"Call",th_ber:"BER",no_calls:"No calls yet",sec_log:"Log",
+  cfg_prefix:"Config: ",
+  toast_cfg_load_fail:"Config load failed: ",toast_cfg_saved:"Config saved",toast_saved:"Saved",toast_save_fail:"Save failed: ",
+  toast_starting:"Starting",toast_start_fail:"Start failed: ",toast_stopped:"Stopped",toast_stop_fail:"Stop failed: ",
+  toast_restarting:"Restarting",toast_restart_fail:"Restart failed: ",toast_voices_fail:"Voices load failed: ",
+  toast_voice_playing:"Playing voice sample",toast_voice_fail:"Voice test failed: ",toast_llm_fail:"LLM test failed: ",
+  connected:"Connected",failed:"Failed",yes:"yes",no:"no"
+},
+ru:{
+  lang_label:"Язык",
+  btn_start:"Старт",btn_stop:"Стоп",btn_restart:"Перезапуск",btn_refresh:"Обновить",btn_test_voice:"Проверить голос",btn_test_llm:"Проверить подключение LLM",btn_save:"Сохранить конфиг",btn_reload:"Перезагрузить",
+  state_stopped:"ОСТАНОВЛЕН",state_running:"РАБОТАЕТ",state_starting:"ЗАПУСК",state_error:"ОШИБКА",mode_prefix:"режим: ",
+  sec_settings:"Настройки",sec_radio:"Радио / Модем",sec_station:"BrandMeister / Станция",sec_rf:"Радио (RF)",sec_mode:"Режим",sec_agent:"Голосовой помощник (агент)",
+  lbl_serial:"Последовательный порт",ph_auto:"автоопределение",lbl_baud:"Скорость (бод)",lbl_tx_delay:"Задержка TX (мс)",lbl_dmr_delay:"Задержка DMR",
+  chk_duplex:"Дуплексный репитер",chk_rx_invert:"Инверсия RX",chk_tx_invert:"Инверсия TX",chk_ptt_invert:"Инверсия PTT",chk_modem_debug:"Отладочный лог модема",
+  lbl_callsign:"Позывной",lbl_dmr_id:"DMR ID",lbl_master_addr:"Адрес мастера",lbl_master_port:"Порт мастера",lbl_hotspot_name:"Имя хотспота",
+  lbl_password:"Пароль безопасности",ph_unchanged:"(без изменений)",ph_not_set:"(не задан)",lbl_hang:"Время удержания (кадры)",chk_slot2:"Слот 2",chk_slot1:"Слот 1",chk_location:"Отправлять местоположение",
+  lbl_rx_freq:"Частота RX (МГц)",lbl_tx_freq:"Частота TX (МГц)",lbl_color_code:"Цветовой код",lbl_tx_power:"Мощность TX",
+  lbl_rx_offset:"Смещение RX",lbl_tx_offset:"Смещение TX",lbl_tx_dc:"Смещение TX по DC",lbl_rx_dc:"Смещение RX по DC",lbl_tx_gain:"Компенсация усиления TX (дБ)",
+  pwr_min:"Минимальная",pwr_very_low:"Очень низкая",pwr_low:"Низкая",pwr_below_medium:"Ниже средней",pwr_medium:"Средняя",pwr_above_medium:"Выше средней",pwr_high:"Высокая",pwr_max:"Максимальная",
+  lbl_mode:"Режим работы",opt_mode_network:"BrandMeister (интернет)",opt_mode_echo:"Эхо-репитер (офлайн)",opt_mode_agent:"Голосовой помощник (локальная / онлайн LLM)",lbl_log_level:"Уровень логов",
+  hint_mode:"Эхо = повтор полученного DMR в эфир, без сети. Агент = STT → LLM → TTS ответ.",
+  chk_agent_enabled:"Обрабатывать входящие вызовы и отвечать голосом",lbl_stt:"Распознавание речи",lbl_whisper_model:"Модель Whisper",lbl_whisper_lang:"Язык Whisper",lbl_whisper_device:"Устройство Whisper",
+  lbl_llm_provider:"Провайдер LLM",lbl_llm_url:"Базовый URL LLM",ph_server_default:"(по умолчанию на сервере)",lbl_llm_model:"Модель LLM",lbl_llm_key:"API-ключ LLM",lbl_system_prompt:"Системный промпт",lbl_temperature:"Температура",lbl_max_tokens:"Макс. токенов",lbl_timeout:"Тайм-аут (с)",llm_key_required:"Нужен API-ключ.",
+  chk_web_search:"Разрешить модели искать информацию в интернете",lbl_web_search_provider:"Поисковая система",lbl_web_search_base_url:"Базовый URL SearXNG",lbl_web_search_language:"Язык поиска",lbl_web_search_max_results:"Макс. результатов",lbl_web_search_fetch_pages:"Страниц для чтения (0 = только сниппеты)",lbl_web_search_timeout:"Тайм-аут поиска (с)",hint_web_search:"Модель сама решает, когда искать. Результаты считаются недоверенными данными; ответ остаётся коротким и удобным для голоса.",
+  lbl_tts:"Синтез речи",lbl_piper_voice:"Голос Piper",opt_default:"(по умолчанию)",lbl_piper_dir:"Каталог голосов Piper",lbl_piper_model:"Модель Piper (.onnx)",
+  hint_voice:"Голоса ищутся рекурсивно в каталоге Piper. Положите туда *.onnx + *.onnx.json, чтобы добавить голос; модели высокого качества показываются первыми.",
+  lbl_reply_src:"ID источника ответа (0 = вызывающий)",lbl_reply_dst:"ID получателя ответа (0 = вызывающий)",lbl_reply_type:"Тип ответного вызова",opt_group_call:"Групповой вызов (TG)",opt_private_call:"Личный вызов (PC)",
+  lbl_tail_hold:"Удержание хвоста (с)",lbl_max_queue:"Макс. очередь (пакеты)",lbl_speech_rate:"Скорость речи (×, 1 = обычная)",lbl_length_scale:"Масштаб длины TTS (больше = медленнее)",lbl_tts_volume:"Громкость TTS",
+  sec_status:"Статус",m_modem:"Модем",m_network:"Сеть",m_txrx:"TX / RX",m_uptime:"Время работы",sec_agent_metric:"Агент",m_state:"Состояние",m_calls:"Вызовы / ответы",m_frames:"Пакеты RX / TX",m_errors:"Ошибки",
+  sec_echo:"Эхо",m_queued:"В очереди",m_replaying:"Воспроизведение",m_last_call:"Последний вызов",
+  sec_last_heard:"Последние вызовы",th_time:"Время",th_slot:"Слот",th_source:"Источник",th_destination:"Получатель",th_call:"Вызов",th_ber:"BER",no_calls:"Пока нет вызовов",sec_log:"Лог",
+  cfg_prefix:"Конфиг: ",
+  toast_cfg_load_fail:"Не удалось загрузить конфиг: ",toast_cfg_saved:"Конфиг сохранён",toast_saved:"Сохранено",toast_save_fail:"Не удалось сохранить: ",
+  toast_starting:"Запуск",toast_start_fail:"Не удалось запустить: ",toast_stopped:"Остановлено",toast_stop_fail:"Не удалось остановить: ",
+  toast_restarting:"Перезапуск",toast_restart_fail:"Не удалось перезапустить: ",toast_voices_fail:"Не удалось загрузить голоса: ",
+  toast_voice_playing:"Воспроизведение примера голоса",toast_voice_fail:"Не удалось проверить голос: ",toast_llm_fail:"Не удалось проверить LLM: ",
+  connected:"Подключено",failed:"Ошибка",yes:"да",no:"нет"
+}
+};
+let LANG=(()=>{try{const s=localStorage.getItem('dmr.ui.lang');if(s==='ru'||s==='en')return s}catch(e){}return (navigator.language||'').toLowerCase().startsWith('ru')?'ru':'en'})();
+function t(k){return (I18N[LANG]&&I18N[LANG][k])||I18N.en[k]||k}
+let CFG=null, LOG_SINCE=0, STATUS=null, PWD_SET=false, KEY_SET=false, PROVIDERS=[], PORTS=[];
+const $=id=>document.getElementById(id);
+const num=(id,d=0)=>{const v=parseFloat($(id).value);return Number.isFinite(v)?v:d};
+const int=(id,d=0)=>Math.round(num(id,d));
+const bool=id=>$(id).checked;
+const str=id=>$(id).value.trim();
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function toast(msg,err=false){const tEl=$('toast');tEl.textContent=msg;tEl.className='toast show'+(err?' err':'');clearTimeout(tEl._h);tEl._h=setTimeout(()=>tEl.className='toast',3500)}
+function applyI18n(){
+  document.documentElement.lang=LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n)});
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{el.placeholder=t(el.dataset.i18nPh)});
+  const sel=$('lang');if(sel)sel.value=LANG;
+  rebuildPortOptions();
+  if(PROVIDERS.length)renderProviders();
+  updateProviderHint();
+  if(STATUS){pill(STATUS.status.state);$('modebadge').textContent=t('mode_prefix')+(STATUS.mode||'—')}
+}
+function provById(id){return PROVIDERS.find(p=>p.id===id)||PROVIDERS[0]||{id:'custom',name:'Local / custom'}}
+function provName(p){return LANG==='ru'?(p.name_ru||p.name):p.name}
+function provNote(p){return LANG==='ru'?(p.note_ru||p.note):p.note}
+function renderProviders(){
+  const sel=$('agent_llm_provider');if(!sel)return;
+  const want=sel.value||(CFG&&CFG.agent&&CFG.agent.llm_provider)||'custom';
+  sel.innerHTML=PROVIDERS.map(p=>'<option value="'+esc(p.id)+'">'+esc(provName(p))+'</option>').join('');
+  sel.value=PROVIDERS.some(p=>p.id===want)?want:'custom';
+  updateProviderHint();
+}
+function updateProviderHint(){
+  const sel=$('agent_llm_provider'),hint=$('llm_provider_hint');if(!sel||!hint)return;
+  const p=provById(sel.value);
+  let text=provNote(p)||'';
+  if(p.requires_key)text+=(text?' ':'')+t('llm_key_required');
+  hint.textContent=text;
+  const dl=$('agent_llm_models');if(dl)dl.innerHTML=(p.models||[]).map(m=>'<option value="'+esc(m)+'">').join('');
+}
+function onProviderChange(){
+  const p=provById($('agent_llm_provider').value);if(!p)return;
+  if(p.base_url)setVal('agent_llm_base_url',p.base_url);
+  if(p.default_model)setVal('agent_llm_model',p.default_model);
+  if(!p.requires_key)setVal('agent_llm_api_key','');
+  updateProviderHint();
+}
+async function loadProviders(){
+  try{const r=await api('/api/llm-providers');PROVIDERS=(r&&r.providers)||[]}catch(e){PROVIDERS=[]}
+  if(!PROVIDERS.length)PROVIDERS=[{id:'custom',name:'Local / custom',base_url:''}];
+  renderProviders();
+}
+function setLang(l){
+  LANG=(l==='ru')?'ru':'en';
+  try{localStorage.setItem('dmr.ui.lang',LANG)}catch(e){}
+  applyI18n();updatePlaceholders();if(STATUS)refreshStatus();
+}
+function updatePlaceholders(){
+  const np=$('network_password'),ak=$('agent_llm_api_key');
+  if(np)np.placeholder=PWD_SET?t('ph_unchanged'):t('ph_not_set');
+  if(ak)ak.placeholder=KEY_SET?t('ph_unchanged'):t('ph_not_set');
+}
+async function api(path,opt){const r=await fetch(path,opt);let body=null;try{body=await r.json()}catch(e){}if(!r.ok){const m=body&&(body.error||(body.errors||[]).join('; '))||('HTTP '+r.status);throw new Error(m)}return body}
+function setVal(id,v){$(id).value=v??''}
+function setCheck(id,v){$(id).checked=!!v}
+const RF_STEPS=[1,5,10,15,20,40,80,98];
+function snapRFLevel(v){v=Number(v)||0;return RF_STEPS.reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a)}
+function rebuildPortOptions(){
+  const sel=$('modem_port');if(!sel)return;
+  const cur=sel.value||(CFG&&CFG.modem&&CFG.modem.port)||'';
+  const items=[{v:'',label:t('ph_auto')}];
+  for(const p of PORTS)items.push({v:p,label:p});
+  if(cur&&!items.some(x=>x.v===cur))items.push({v:cur,label:cur});
+  sel.innerHTML=items.map(x=>'<option value="'+esc(x.v)+'">'+esc(x.label)+'</option>').join('');
+  sel.value=cur;
+}
+async function loadPorts(){try{PORTS=await api('/api/ports')||[]}catch(e){PORTS=[]}rebuildPortOptions()}
+function mhz(hz){return (hz/1e6).toFixed(6)}
+function fillConfig(c){
+  setVal('modem_port',c.modem.port);setVal('modem_baud',c.modem.baud);setVal('modem_tx_delay',c.modem.tx_delay);setVal('modem_dmr_delay',c.modem.dmr_delay);
+  setCheck('modem_duplex',c.modem.duplex);setCheck('modem_rx_invert',c.modem.rx_invert);setCheck('modem_tx_invert',c.modem.tx_invert);setCheck('modem_ptt_invert',c.modem.ptt_invert);setCheck('modem_debug',c.modem.debug);
+  setVal('station_callsign',c.station.callsign);setVal('station_dmr_id',c.station.dmr_id);
+  setVal('network_address',c.network.address);setVal('network_port',c.network.port);setVal('network_name',c.network.name);setVal('network_password','');setVal('network_hang',c.network.hang);
+  setCheck('network_slot1',c.network.slot1);setCheck('network_slot2',c.network.slot2);setCheck('network_location',c.network.location);
+  setVal('rf_rx_mhz',mhz(c.rf.rx_frequency));setVal('rf_tx_mhz',mhz(c.rf.tx_frequency));setVal('rf_color_code',c.rf.color_code);setVal('rf_rf_level',snapRFLevel(c.rf.rf_level));
+  setVal('rf_rx_offset',c.rf.rx_offset);setVal('rf_tx_offset',c.rf.tx_offset);setVal('rf_tx_dc_offset',c.rf.tx_dc_offset);setVal('rf_rx_dc_offset',c.rf.rx_dc_offset);setVal('rf_tx_gain_db',c.rf.tx_gain_db);
+  setVal('mode',c.mode||'network');setVal('log_level',(c.log_level||'INFO').toUpperCase());
+  const a=c.agent;
+  setCheck('agent_enabled',a.enabled);setVal('agent_stt_engine',a.stt_engine||'faster-whisper');setVal('agent_whisper_model',a.whisper_model);
+  setVal('agent_whisper_language',a.whisper_language);setVal('agent_whisper_device',a.whisper_device);
+  setVal('agent_llm_provider',a.llm_provider||'custom');
+  const lp=provById(a.llm_provider);
+  setVal('agent_llm_base_url',a.llm_base_url||lp.base_url||'');
+  setVal('agent_llm_model',a.llm_model||lp.default_model||'');
+  setVal('agent_llm_api_key','');updateProviderHint();
+  setVal('agent_system_prompt',a.system_prompt);setVal('agent_llm_temperature',a.llm_temperature);setVal('agent_llm_max_tokens',a.llm_max_tokens);setVal('agent_llm_timeout',a.llm_timeout);
+  setCheck('agent_web_search',a.web_search);setVal('agent_web_search_provider',a.web_search_provider||'duckduckgo');setVal('agent_web_search_base_url',a.web_search_base_url);
+  setVal('agent_web_search_language',a.web_search_language);setVal('agent_web_search_max_results',a.web_search_max_results);setVal('agent_web_search_fetch_pages',a.web_search_fetch_pages);setVal('agent_web_search_timeout',a.web_search_timeout);
+  setVal('agent_tts_engine',a.tts_engine||'piper');setVal('agent_piper_voice',a.piper_voice);setVal('agent_piper_voice_dir',a.piper_voice_dir);setVal('agent_piper_model_path',a.piper_model_path);
+  setVal('agent_reply_src_id',a.reply_src_id);setVal('agent_reply_dst_id',a.reply_dst_id);setVal('agent_reply_flco',a.reply_flco);
+  setVal('agent_hold_timeout',a.hold_timeout);setVal('agent_max_queue',a.max_queue);setVal('agent_tts_rate',a.tts_rate||1);setVal('agent_tts_length_scale',a.tts_length_scale);setVal('agent_tts_volume',a.tts_volume);
+  rebuildPortOptions();
+}
+function buildConfig(){
+  const c=structuredClone(CFG);
+  c.modem={...c.modem,port:str('modem_port'),baud:int('modem_baud'),duplex:bool('modem_duplex'),rx_invert:bool('modem_rx_invert'),tx_invert:bool('modem_tx_invert'),ptt_invert:bool('modem_ptt_invert'),tx_delay:int('modem_tx_delay'),dmr_delay:int('modem_dmr_delay'),debug:bool('modem_debug')};
+  c.station={callsign:str('station_callsign').toUpperCase(),dmr_id:int('station_dmr_id')};
+  c.network={...c.network,address:str('network_address'),port:int('network_port'),password:str('network_password'),name:str('network_name'),location:bool('network_location'),slot1:bool('network_slot1'),slot2:bool('network_slot2'),hang:int('network_hang')};
+  c.rf={...c.rf,rx_frequency:Math.round(num('rf_rx_mhz')*1e6),tx_frequency:Math.round(num('rf_tx_mhz')*1e6),rx_offset:int('rf_rx_offset'),tx_offset:int('rf_tx_offset'),rf_level:int('rf_rf_level'),color_code:int('rf_color_code'),tx_dc_offset:int('rf_tx_dc_offset'),rx_dc_offset:int('rf_rx_dc_offset'),tx_gain_db:int('rf_tx_gain_db')};
+  c.mode=str('mode');c.log_level=str('log_level');
+  c.agent={...c.agent,enabled:bool('agent_enabled'),stt_engine:str('agent_stt_engine'),whisper_model:str('agent_whisper_model'),whisper_language:str('agent_whisper_language'),whisper_device:str('agent_whisper_device'),llm_provider:str('agent_llm_provider'),llm_base_url:str('agent_llm_base_url'),llm_model:str('agent_llm_model'),llm_api_key:str('agent_llm_api_key'),system_prompt:str('agent_system_prompt'),llm_temperature:num('agent_llm_temperature'),llm_max_tokens:int('agent_llm_max_tokens'),llm_timeout:num('agent_llm_timeout'),web_search:bool('agent_web_search'),web_search_provider:str('agent_web_search_provider'),web_search_base_url:str('agent_web_search_base_url'),web_search_language:str('agent_web_search_language'),web_search_max_results:int('agent_web_search_max_results'),web_search_fetch_pages:int('agent_web_search_fetch_pages'),web_search_timeout:num('agent_web_search_timeout'),tts_engine:str('agent_tts_engine'),piper_voice:str('agent_piper_voice'),piper_voice_dir:str('agent_piper_voice_dir'),piper_model_path:str('agent_piper_model_path'),reply_src_id:int('agent_reply_src_id'),reply_dst_id:int('agent_reply_dst_id'),reply_flco:int('agent_reply_flco'),hold_timeout:num('agent_hold_timeout'),max_queue:int('agent_max_queue'),tts_rate:num('agent_tts_rate',1),tts_length_scale:num('agent_tts_length_scale'),tts_volume:num('agent_tts_volume')};
+  return c;
+}
+async function loadConfig(){try{const v=await api('/api/config');CFG=v.config;fillConfig(CFG);PWD_SET=!!v.password_set;KEY_SET=!!v.llm_key_set;updatePlaceholders();$('cfgpath').textContent=t('cfg_prefix')+((STATUS&&STATUS.config_path)||'');}catch(e){toast(t('toast_cfg_load_fail')+e.message,true)}}
+async function saveConfig(){try{const c=buildConfig();const r=await api('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c)});toast(r.ok?t('toast_cfg_saved'):t('toast_saved'));await loadConfig();await refreshStatus()}catch(e){toast(t('toast_save_fail')+e.message,true)}}
+async function startCore(){try{await api('/api/start',{method:'POST'});toast(t('toast_starting'));refreshStatus()}catch(e){toast(t('toast_start_fail')+e.message,true)}}
+async function stopCore(){try{await api('/api/stop',{method:'POST'});toast(t('toast_stopped'));refreshStatus()}catch(e){toast(t('toast_stop_fail')+e.message,true)}}
+async function restartCore(){try{await api('/api/restart',{method:'POST'});toast(t('toast_restarting'));refreshStatus()}catch(e){toast(t('toast_restart_fail')+e.message,true)}}
+async function loadVoices(){try{const v=await api('/api/voices');const sel=$('agent_piper_voice');const want=(sel.value||(CFG&&CFG.agent&&CFG.agent.piper_voice)||'').trim();const items=(v||[]).map(x=>({name:x.name,label:x.label||x.name}));if(want&&!items.some(x=>x.name===want))items.unshift({name:want,label:want});sel.innerHTML='<option value="">'+esc(t('opt_default'))+'</option>'+items.map(x=>'<option value="'+esc(x.name)+'">'+esc(x.label)+'</option>').join('');sel.value=want}catch(e){toast(t('toast_voices_fail')+e.message,true)}}
+async function testVoice(){try{const c=buildConfig();const r=await fetch('/api/test-tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c.agent)});if(!r.ok){let m='HTTP '+r.status;try{const b=await r.json();m=b.error||m}catch(e){}throw new Error(m)}const url=URL.createObjectURL(await r.blob());const a=new Audio(url);a.onended=()=>URL.revokeObjectURL(url);await a.play();toast(t('toast_voice_playing'))}catch(e){toast(t('toast_voice_fail')+e.message,true)}}
+async function testLLM(){try{const c=buildConfig();const r=await api('/api/test-llm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c.agent)});toast(r.detail||(r.ok?t('connected'):t('failed')),!r.ok)}catch(e){toast(t('toast_llm_fail')+e.message,true)}}
+function fmtUptime(t){if(!t||t.startsWith('0001'))return '—';const s=Math.max(0,Math.floor((Date.now()-new Date(t).getTime())/1000));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return (h?h+'h ':'')+m+'m '+(s%60)+'s'}
+function pill(state){const p=$('pill');p.textContent=t('state_'+(state||'STOPPED').toLowerCase());p.className='';if(state==='RUNNING')p.className='running';else if(state==='ERROR')p.className='error';else if(state==='STARTING')p.className='starting'}
+function setText(id,v){$(id).textContent=v??'—'}
+async function refreshStatus(){try{const s=await api('/api/status');STATUS=s;pill(s.status.state);$('modebadge').textContent=t('mode_prefix')+(s.mode||'—');
+  setText('m_modem',s.status.modem_ok?(s.status.modem_description||'OK'):'—');setText('m_net',s.status.net_status||'—');setText('m_tx',(s.status.tx?'TX':'')+(s.status.tx&&s.status.rx?' / ':'')+(s.status.rx?'RX':''))||'—';setText('m_uptime',fmtUptime(s.status.start_time));setText('m_error',s.status.last_error||'');
+  const ab=$('agentbox'),eb=$('echobox');ab.style.display=s.agent?'block':'none';eb.style.display=s.echo?'block':'none';
+  if(s.agent){setText('a_state',s.agent.state);setText('a_calls',s.agent.calls+' / '+s.agent.replies);setText('a_frames',s.agent.frames_rx+' / '+s.agent.frames_tx);setText('a_errors',s.agent.errors)}
+  if(s.echo){setText('e_frames',s.echo.frames_rx+' / '+s.echo.frames_tx);setText('e_queue',s.echo.queued);setText('e_replay',t(s.echo.replaying?'yes':'no'));setText('e_last',s.echo.last_src?('#'+s.echo.last_src+' → '+(s.echo.last_flco||'TG')+' #'+s.echo.last_dst):'—')}
+  const rows=(s.last_heard||[]).map(e=>'<tr><td>'+esc(e.ts)+'</td><td>'+e.slot+'</td><td>'+e.src+'</td><td>'+e.dst+'</td><td>'+esc(e.flco)+'</td><td>'+e.ber+'</td></tr>').join('');
+  $('heard').innerHTML=rows||'<tr><td colspan="6" style="color:#66758a">'+esc(t('no_calls'))+'</td></tr>';
+}catch(e){pill('ERROR')}}
+function addLogs(lines){if(!lines||!lines.length)return;const el=$('log');for(const ln of lines){const d=document.createElement('div');d.className='l-'+(ln.level||'info').toLowerCase();d.textContent=ln.time+'  '+ln.level+'  '+ln.msg;el.appendChild(d);LOG_SINCE=Math.max(LOG_SINCE,ln.index+1)}while(el.childNodes.length>1200)el.removeChild(el.firstChild);el.scrollTop=el.scrollHeight}
+async function refreshLogs(){try{const lines=await api('/api/logs?since='+LOG_SINCE);addLogs(lines)}catch(e){}}
+(async()=>{applyI18n();await loadProviders();await loadConfig();await loadPorts();await loadVoices();await refreshStatus();await refreshLogs();setInterval(refreshStatus,1000);setInterval(refreshLogs,900)})();
+</script>
+</body>
+</html>

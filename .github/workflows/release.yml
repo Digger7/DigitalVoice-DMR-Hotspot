@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version for the package names, e.g. 1.0.1 (empty = use the VERSION file)"
+        required: false
+        default: ""
+      include_voices:
+        description: "Include piper voices in packages"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Tag pushes always include voices; manual runs can uncheck the input.
+      - name: Resolve INCLUDE_VOICES
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "INCLUDE_VOICES=$VOICES_INPUT" >>"$GITHUB_ENV"
+          else
+            echo "INCLUDE_VOICES=1" >>"$GITHUB_ENV"
+          fi
+        env:
+          EVENT: ${{ github.event_name }}
+          VOICES_INPUT: ${{ inputs.include_voices && '1' || '0' }}
+
+      # voices/ is not in git (241 MB); fetch the four ru_RU piper voices
+      # from HuggingFace so the packages match local builds.
+      - name: Download piper voices
+        if: env.INCLUDE_VOICES == '1'
+        run: |
+          mkdir -p voices/piper
+          base="https://huggingface.co/rhasspy/piper-voices/resolve/main/ru/ru_RU"
+          for name in irina denis dmitri ruslan; do
+            url="$base/$name/medium/ru_RU-$name-medium.onnx"
+            curl -sfL "$url"      -o "voices/piper/ru_RU-$name-medium.onnx"
+            curl -sfL "$url.json" -o "voices/piper/ru_RU-$name-medium.onnx.json"
+          done
+          ls -lh voices/piper
+
+      # VERSION: tag (v1.2.3 -> 1.2.3) for tag pushes, otherwise the input / VERSION file.
+      - name: Build packages
+        env:
+          RELEASE_VERSION: ${{ github.event_name == 'push' && github.ref_name || inputs.version }}
+        run: |
+          if [ -n "$RELEASE_VERSION" ]; then
+            VERSION="$RELEASE_VERSION" ./tools/package.sh
+          else
+            ./tools/package.sh
+          fi
+
+      - name: Show artifacts
+        run: ls -lh dist && cat dist/SHA256SUMS.txt
+
+      - name: Upload to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/DMRHotspot-*.dmg
+            dist/DMRHotspot-*.zip
+            dist/SHA256SUMS.txt
+          generate_release_notes: true

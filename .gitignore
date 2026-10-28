@@ -1,0 +1,12 @@
+/dmr-hotspot
+/dmr-gui
+/dmr-diag
+/dmr-selftest
+/config.yaml
+*.test
+.DS_Store
+/.venv/
+/voices/
+/.cache/
+/dist/
+/bin/
