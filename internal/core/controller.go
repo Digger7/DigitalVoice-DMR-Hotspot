@@ -41,12 +41,15 @@ type Core struct {
 	config config.AppConfig
 	mode   string
 
-	mu        sync.Mutex
-	status    RuntimeStatus
-	slots     [2]*Slot
-	txQueue   map[int][][]byte
-	lastHeard []LastHeardEntry
-	callbacks []EventCallback
+	mu         sync.Mutex
+	status     RuntimeStatus
+	slots      [2]*Slot
+	txQueue    map[int][][]byte
+	lastHeard  []LastHeardEntry
+	callLog    []CallLogEntry
+	active     map[string]*activeCall
+	nextCallID uint64
+	callbacks  []EventCallback
 
 	lifecycleMu sync.Mutex
 	stop        chan struct{}
@@ -67,6 +70,7 @@ func NewCore(cfg config.AppConfig) *Core {
 	c := &Core{
 		config: cfg, mode: strings.ToLower(cfg.Mode),
 		txQueue: map[int][][]byte{1: {}, 2: {}},
+		active:  map[string]*activeCall{},
 	}
 	if c.mode == "" {
 		c.mode = "network"
@@ -151,6 +155,7 @@ func (c *Core) Start() error {
 		s.LastError = ""
 		s.TX, s.RX = false, false
 	})
+	c.clearCalls()
 	go c.run(stop, done)
 	return nil
 }
@@ -223,6 +228,7 @@ func (c *Core) run(stop <-chan struct{}, done chan<- struct{}) {
 	for {
 		select {
 		case <-stop:
+			c.finishAllCalls()
 			c.stopHardware()
 			c.markStopped()
 			c.fire("stopped", nil)
@@ -352,6 +358,7 @@ func (c *Core) tick() {
 		c.lastStatus = now
 		m.GetStatus()
 	}
+	c.cleanupCalls(now)
 
 	for i := 0; i < 8; i++ {
 		frame := m.ReadFrame(0)
@@ -431,8 +438,10 @@ func (c *Core) handleFrame(frame *modem.Frame) {
 		switch c.mode {
 		case "echo":
 			c.rfEcho(frame.Data)
+			c.journalRF(frame.Type, frame.Data)
 		case "agent":
 			c.rfAgent(frame.Data)
+			c.journalRF(frame.Type, frame.Data)
 		default:
 			if frame.Type == protocol.MMDVMDMRData2 {
 				c.rfRX(frame.Data)
@@ -445,7 +454,25 @@ func (c *Core) handleFrame(frame *modem.Frame) {
 		if c.agent != nil {
 			c.agent.HandleLost()
 		}
+		// Momentary sync losses are not call boundaries; the journal
+		// closes the call on silence (cleanupCalls) or a terminator.
 		log.Debugf("RF loss on the modem")
+	}
+}
+
+// journalRF records echo/agent mode RF traffic into the gateway call log.
+func (c *Core) journalRF(frameType byte, payload []byte) {
+	slotNo := 1
+	if frameType == protocol.MMDVMDMRData2 {
+		slotNo = 2
+	}
+	meta, burst, rssi, ok := splitRF(payload)
+	if !ok || len(burst) != protocol.DMRFrameLengthBytes {
+		return
+	}
+	d := c.slots[slotNo-1].ProcessRFFrame(meta, burst, rssi)
+	if d != nil && (d.IsVoice() || d.IsVoiceSync() || d.IsHeader() || d.IsTerminator()) {
+		c.noteCallFrame(false, *d)
 	}
 }
 
@@ -488,12 +515,14 @@ func (c *Core) rfRX(payload []byte) {
 	if d == nil {
 		return
 	}
+	if d.IsVoice() || d.IsVoiceSync() || d.IsHeader() || d.IsTerminator() {
+		c.noteCallFrame(false, *d)
+	}
 	if c.net != nil && c.net.SendData(*d) {
 		if d.DataType == protocol.DTVoiceLCHeader {
 			log.Infof("RF voice %d -> %s%d (slot %d)", d.SrcID,
 				flcoLabel(d.FLCO), d.DstID, slotNo)
 		}
-		c.updateLastHeard(slotNo, *d)
 	}
 }
 
@@ -504,6 +533,9 @@ func (c *Core) drainNetSlot(slotNo int) {
 	d := c.net.GetDataForSlot(slotNo, 0)
 	if d == nil || len(d.Data) != protocol.DMRFrameLengthBytes {
 		return
+	}
+	if d.IsVoice() || d.IsVoiceSync() || d.IsHeader() || d.IsTerminator() {
+		c.noteCallFrame(true, *d)
 	}
 	if d.DataType == protocol.DTVoiceLCHeader {
 		log.Infof("net voice %d -> %s%d (slot %d)", d.SrcID,
@@ -523,18 +555,6 @@ func (c *Core) onLastHeard(src, dst int, flco string) {
 	c.mu.Lock()
 	entry := LastHeardEntry{TS: time.Now().Format("15:04:05"), Slot: 2,
 		Src: src, Dst: dst, FLCO: flco}
-	c.lastHeard = append([]LastHeardEntry{entry}, c.lastHeard...)
-	if len(c.lastHeard) > 40 {
-		c.lastHeard = c.lastHeard[:40]
-	}
-	c.mu.Unlock()
-	c.fire("lastheard", entry)
-}
-
-func (c *Core) updateLastHeard(slotNo int, d network.DMRData) {
-	c.mu.Lock()
-	entry := LastHeardEntry{TS: time.Now().Format("15:04:05"), Slot: slotNo,
-		Src: d.SrcID, Dst: d.DstID, FLCO: strings.TrimSpace(flcoLabel(d.FLCO)), BER: d.BER}
 	c.lastHeard = append([]LastHeardEntry{entry}, c.lastHeard...)
 	if len(c.lastHeard) > 40 {
 		c.lastHeard = c.lastHeard[:40]

@@ -59,6 +59,12 @@ th,td{text-align:left;padding:5px 6px;border-bottom:1px solid #232d3a;white-spac
 th{color:var(--muted);font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
 #log{height:320px;overflow:auto;background:#080b0f;border:1px solid #202a37;border-radius:8px;padding:8px;font:11px/1.5 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap}
 .l-debug{color:#66758a}.l-info{color:#a9b8cc}.l-warning{color:#e0b25d}.l-error{color:#ff8c88}
+tr.live{background:rgba(67,160,71,.08)}
+tr.live td:first-child{color:#9ee6a4}
+.link{color:var(--accent2);text-decoration:none}
+.link:hover{text-decoration:underline}
+td.bad{color:var(--err)}
+td.warn{color:var(--warn)}
 .toast{position:fixed;right:18px;bottom:18px;background:#1f2937;border:1px solid #3a4a60;border-radius:8px;padding:10px 14px;opacity:0;transform:translateY(8px);transition:.2s;max-width:420px}
 .toast.show{opacity:1;transform:none}
 .toast.err{border-color:#7a2b29;background:#2b1718}
@@ -220,8 +226,20 @@ th{color:var(--muted);font-weight:500;font-size:10px;text-transform:uppercase;le
         <div class="metric"><b data-i18n="m_last_call">Last call</b><span id="e_last">—</span></div>
       </div>
     </div>
-    <h2 style="margin-top:16px" data-i18n="sec_last_heard">Last heard</h2>
-    <table><thead><tr><th data-i18n="th_time">Time</th><th data-i18n="th_slot">Slot</th><th data-i18n="th_source">Source</th><th data-i18n="th_destination">Destination</th><th data-i18n="th_call">Call</th><th data-i18n="th_ber">BER</th></tr></thead><tbody id="heard"></tbody></table>
+    <div id="gwbox" style="margin-top:16px;display:none">
+      <h2 data-i18n="sec_gateway">Gateway Activity</h2>
+      <table><thead><tr>
+        <th data-i18n="th_time">Time</th>
+        <th data-i18n="th_mode">Mode</th>
+        <th data-i18n="th_callsign">Callsign</th>
+        <th data-i18n="th_target">Target</th>
+        <th data-i18n="th_src">Src</th>
+        <th data-i18n="th_dur">Dur(s)</th>
+        <th data-i18n="th_loss">Loss</th>
+        <th data-i18n="th_ber">BER</th>
+      </tr></thead><tbody id="gwact"></tbody></table>
+      <p class="hint" data-i18n="hint_gateway">Callsign column shows the talker DMR ID; click to open in the RadioID database. RF/Net = call origin (radio air / BrandMeister).</p>
+    </div>
     <h2 style="margin-top:16px" data-i18n="sec_log">Log</h2>
     <div id="log"></div>
   </section>
@@ -252,7 +270,9 @@ en:{
   lbl_tail_hold:"Tail hold (s)",lbl_max_queue:"Max queue (bursts)",lbl_speech_rate:"Speech rate (×, 1 = normal)",lbl_length_scale:"TTS length scale (higher = slower)",lbl_tts_volume:"TTS volume",
   sec_status:"Status",m_modem:"Modem",m_network:"Network",m_txrx:"TX / RX",m_uptime:"Uptime",sec_agent_metric:"Agent",m_state:"State",m_calls:"Calls / replies",m_frames:"RX / TX bursts",m_errors:"Errors",
   sec_echo:"Echo",m_queued:"Queued",m_replaying:"Replaying",m_last_call:"Last call",
-  sec_last_heard:"Last heard",th_time:"Time",th_slot:"Slot",th_source:"Source",th_destination:"Destination",th_call:"Call",th_ber:"BER",no_calls:"No calls yet",sec_log:"Log",
+  th_time:"Time",th_ber:"BER",no_calls:"No calls yet",sec_log:"Log",
+  sec_gateway:"Gateway Activity",th_mode:"Mode",th_callsign:"Callsign",th_target:"Target",th_src:"Src",th_dur:"Dur(s)",th_loss:"Loss",
+  src_rf:"RF",src_net:"Net",hint_gateway:"Callsign column shows the talker DMR ID; click to open in the RadioID database. RF/Net = call origin (radio air / BrandMeister).",
   cfg_prefix:"Config: ",
   toast_cfg_load_fail:"Config load failed: ",toast_cfg_saved:"Config saved",toast_saved:"Saved",toast_save_fail:"Save failed: ",
   toast_starting:"Starting",toast_start_fail:"Start failed: ",toast_stopped:"Stopped",toast_stop_fail:"Stop failed: ",
@@ -283,7 +303,9 @@ ru:{
   lbl_tail_hold:"Удержание хвоста (с)",lbl_max_queue:"Макс. очередь (пакеты)",lbl_speech_rate:"Скорость речи (×, 1 = обычная)",lbl_length_scale:"Масштаб длины TTS (больше = медленнее)",lbl_tts_volume:"Громкость TTS",
   sec_status:"Статус",m_modem:"Модем",m_network:"Сеть",m_txrx:"TX / RX",m_uptime:"Время работы",sec_agent_metric:"Агент",m_state:"Состояние",m_calls:"Вызовы / ответы",m_frames:"Пакеты RX / TX",m_errors:"Ошибки",
   sec_echo:"Эхо",m_queued:"В очереди",m_replaying:"Воспроизведение",m_last_call:"Последний вызов",
-  sec_last_heard:"Последние вызовы",th_time:"Время",th_slot:"Слот",th_source:"Источник",th_destination:"Получатель",th_call:"Вызов",th_ber:"BER",no_calls:"Пока нет вызовов",sec_log:"Лог",
+  th_time:"Время",th_ber:"BER",no_calls:"Пока нет вызовов",sec_log:"Лог",
+  sec_gateway:"Журнал вызовов",th_mode:"Режим",th_callsign:"Позывной",th_target:"Тоннель",th_src:"Откуда",th_dur:"Длит. (с)",th_loss:"Потери",
+  src_rf:"RF",src_net:"Net",hint_gateway:"В колонке «Позывной» — DMR ID автора передачи; клик открывает его в базе RadioID. RF — по радио, Net — из BrandMeister.",
   cfg_prefix:"Конфиг: ",
   toast_cfg_load_fail:"Не удалось загрузить конфиг: ",toast_cfg_saved:"Конфиг сохранён",toast_saved:"Сохранено",toast_save_fail:"Не удалось сохранить: ",
   toast_starting:"Запуск",toast_start_fail:"Не удалось запустить: ",toast_stopped:"Остановлено",toast_stop_fail:"Не удалось остановить: ",
@@ -413,14 +435,32 @@ async function testVoice(){try{const c=buildConfig();const r=await fetch('/api/t
 async function testLLM(){try{const c=buildConfig();const r=await api('/api/test-llm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c.agent)});toast(r.detail||(r.ok?t('connected'):t('failed')),!r.ok)}catch(e){toast(t('toast_llm_fail')+e.message,true)}}
 function fmtUptime(t){if(!t||t.startsWith('0001'))return '—';const s=Math.max(0,Math.floor((Date.now()-new Date(t).getTime())/1000));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return (h?h+'h ':'')+m+'m '+(s%60)+'s'}
 function pill(state){const p=$('pill');p.textContent=t('state_'+(state||'STOPPED').toLowerCase());p.className='';if(state==='RUNNING')p.className='running';else if(state==='ERROR')p.className='error';else if(state==='STARTING')p.className='starting'}
+const MON=['Jan','Фев','Mar','Апр','May','Июн','Jul','Авг','Sep','Окт','Nov','Дек'];
+function fmtCallTime(st){const d=new Date(st);if(isNaN(d.getTime()))return '—';const p=x=>String(x).padStart(2,'0');return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+' '+p(d.getDate())+' '+MON[d.getMonth()]}
+function renderGateway(list){
+  const rows=(list||[]).map(e=>{
+    const src=t(e.source==='Net'?'src_net':'src_rf');
+    const target=e.dst?((e.flco==='PC'?'PC ':'TG ')+e.dst):'—';
+    return '<tr'+(e.active?' class="live"':'')+'>'+
+      '<td>'+esc(fmtCallTime(e.start))+'</td>'+
+      '<td>DMR TS'+e.slot+'</td>'+
+      '<td><a class="link" href="https://database.radioid.net/database/view?id='+e.src+'" target="_blank" rel="noopener noreferrer">'+e.src+'</a></td>'+
+      '<td>'+esc(target)+'</td>'+
+      '<td>'+esc(src)+'</td>'+
+      '<td>'+(e.duration||0).toFixed(1)+'</td>'+
+      '<td'+(e.loss>0.05?' class="bad"':'')+'>'+e.loss.toFixed(0)+'%</td>'+
+      '<td'+(e.ber>1?' class="warn"':'')+'>'+e.ber.toFixed(1)+'%</td></tr>';
+  }).join('');
+  $('gwact').innerHTML=rows||'<tr><td colspan="8" style="color:#66758a">'+esc(t('no_calls'))+'</td></tr>';
+}
 function setText(id,v){$(id).textContent=v??'—'}
 async function refreshStatus(){try{const s=await api('/api/status');STATUS=s;pill(s.status.state);$('modebadge').textContent=t('mode_prefix')+(s.mode||'—');
   setText('m_modem',s.status.modem_ok?(s.status.modem_description||'OK'):'—');setText('m_net',s.status.net_status||'—');setText('m_tx',(s.status.tx?'TX':'')+(s.status.tx&&s.status.rx?' / ':'')+(s.status.rx?'RX':''))||'—';setText('m_uptime',fmtUptime(s.status.start_time));setText('m_error',s.status.last_error||'');
   const ab=$('agentbox'),eb=$('echobox');ab.style.display=s.agent?'block':'none';eb.style.display=s.echo?'block':'none';
+  $('gwbox').style.display='block';
+  renderGateway(s.gateway_activity||[]);
   if(s.agent){setText('a_state',s.agent.state);setText('a_calls',s.agent.calls+' / '+s.agent.replies);setText('a_frames',s.agent.frames_rx+' / '+s.agent.frames_tx);setText('a_errors',s.agent.errors)}
   if(s.echo){setText('e_frames',s.echo.frames_rx+' / '+s.echo.frames_tx);setText('e_queue',s.echo.queued);setText('e_replay',t(s.echo.replaying?'yes':'no'));setText('e_last',s.echo.last_src?('#'+s.echo.last_src+' → '+(s.echo.last_flco||'TG')+' #'+s.echo.last_dst):'—')}
-  const rows=(s.last_heard||[]).map(e=>'<tr><td>'+esc(e.ts)+'</td><td>'+e.slot+'</td><td>'+e.src+'</td><td>'+e.dst+'</td><td>'+esc(e.flco)+'</td><td>'+e.ber+'</td></tr>').join('');
-  $('heard').innerHTML=rows||'<tr><td colspan="6" style="color:#66758a">'+esc(t('no_calls'))+'</td></tr>';
 }catch(e){pill('ERROR')}}
 function addLogs(lines){if(!lines||!lines.length)return;const el=$('log');for(const ln of lines){const d=document.createElement('div');d.className='l-'+(ln.level||'info').toLowerCase();d.textContent=ln.time+'  '+ln.level+'  '+ln.msg;el.appendChild(d);LOG_SINCE=Math.max(LOG_SINCE,ln.index+1)}while(el.childNodes.length>1200)el.removeChild(el.firstChild);el.scrollTop=el.scrollHeight}
 async function refreshLogs(){try{const lines=await api('/api/logs?since='+LOG_SINCE);addLogs(lines)}catch(e){}}

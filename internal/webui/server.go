@@ -92,13 +92,14 @@ func (s *Server) handleIcon(w http.ResponseWriter, r *http.Request) {
 }
 
 type statusPayload struct {
-	Status     core.RuntimeStatus    `json:"status"`
-	Running    bool                  `json:"running"`
-	Mode       string                `json:"mode"`
-	LastHeard  []core.LastHeardEntry `json:"last_heard"`
-	Echo       *core.EchoStats       `json:"echo,omitempty"`
-	Agent      *core.AgentStats      `json:"agent,omitempty"`
-	ConfigPath string                `json:"config_path"`
+	Status           core.RuntimeStatus    `json:"status"`
+	Running          bool                  `json:"running"`
+	Mode             string                `json:"mode"`
+	LastHeard        []core.LastHeardEntry `json:"last_heard"`
+	GatewayActivity  []core.CallLogEntry   `json:"gateway_activity"`
+	Echo             *core.EchoStats       `json:"echo,omitempty"`
+	Agent            *core.AgentStats      `json:"agent,omitempty"`
+	ConfigPath       string                `json:"config_path"`
 }
 
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -114,6 +115,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	} else {
 		payload.Status = c.Status()
 		payload.LastHeard = c.LastHeard()
+		payload.GatewayActivity = c.GatewayActivity()
 		if e := c.Echo(); e != nil {
 			st := e.Stats()
 			payload.Echo = &st

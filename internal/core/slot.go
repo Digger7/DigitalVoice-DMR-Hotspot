@@ -12,6 +12,9 @@ import (
 
 var log = logx.GetLogger("core")
 
+// slotIdleReset drops the slot call state after this much RF silence.
+const slotIdleReset = 1000 * time.Millisecond
+
 // Slot is the per-timeslot DMR state machine.
 type Slot struct {
 	SlotNo     int
@@ -36,7 +39,15 @@ func NewSlot(slotNo, colorCode, hang int) *Slot {
 
 // ProcessRFFrame converts a modem RX frame into a network DMRData.
 func (s *Slot) ProcessRFFrame(meta byte, slot []byte, rssi int) *network.DMRData {
-	s.LastRFTS = time.Now()
+	now := time.Now()
+	if !s.LastRFTS.IsZero() && now.Sub(s.LastRFTS) > slotIdleReset {
+		// Previous transmission ended without a terminator; drop the
+		// stale LC/stream state so a fresh call starts cleanly.
+		s.InVoice = false
+		s.LC = nil
+		s.RXEmbedded.Reset()
+	}
+	s.LastRFTS = now
 	d := &network.DMRData{SlotNo: s.SlotNo, Data: append([]byte(nil), slot...), RSSI: rssi}
 
 	switch {
@@ -51,6 +62,16 @@ func (s *Slot) ProcessRFFrame(meta byte, slot []byte, rssi int) *network.DMRData
 		d.N = int(meta & 0x0F)
 	}
 
+	// Feed embedded signalling carried by voice bursts; when a full
+	// sequence decodes, its LC becomes the call context.
+	if d.DataType == protocol.DTVoiceSync || d.DataType == protocol.DTVoice {
+		if lcss := dmr.LCSSFromEMB(slot); lcss != 0 {
+			if s.RXEmbedded.Add(slot, lcss) && s.RXEmbedded.LC != nil {
+				s.LC = s.RXEmbedded.LC
+			}
+		}
+	}
+
 	switch d.DataType {
 	case protocol.DTVoiceLCHeader:
 		hlc, err := dmr.FullLCDecode(slot, protocol.DTVoiceLCHeader)
@@ -58,7 +79,7 @@ func (s *Slot) ProcessRFFrame(meta byte, slot []byte, rssi int) *network.DMRData
 			return nil
 		}
 		s.LC = hlc
-		s.RXEmbedded = dmr.NewEmbeddedLC()
+		s.RXEmbedded.Reset()
 		d.SrcID, d.DstID = hlc.SrcID, hlc.DstID
 		if hlc.FLCO == dmr.FLCOGroup {
 			d.FLCO = 0
@@ -87,7 +108,7 @@ func (s *Slot) ProcessRFFrame(meta byte, slot []byte, rssi int) *network.DMRData
 		}
 	}
 
-	if d.DataType == protocol.DTVoiceLCHeader && !s.InVoice {
+	if !s.InVoice && (d.DataType == protocol.DTVoiceLCHeader || d.DataType == protocol.DTVoiceSync) {
 		s.StreamID = rand.Intn(0xFFFFFFFE-1) + 1
 		s.InVoice = true
 		s.Seq = 0

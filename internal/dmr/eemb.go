@@ -11,6 +11,16 @@ func extractEMBBlock(burst33 []byte) []byte {
 	return bits[:40]
 }
 
+// LCSSFromEMB extracts the 2-bit LCSS marker from a voice burst's EMB
+// (byte 14 carries PI + LCSS). Returns 0 when nothing is embedded.
+func LCSSFromEMB(burst33 []byte) byte {
+	if len(burst33) < 15 {
+		return 0
+	}
+	bits := ByteToBitsBE(burst33[14])
+	return bits[1]<<1 | bits[2]
+}
+
 type EmbeddedLC struct {
 	state int
 	raw   [128]byte
